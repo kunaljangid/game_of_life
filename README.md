@@ -1,3 +1,4 @@
 # game_of_life
 Game of life
-alksdjhgfsdukjfh
+THIS IS GAME OF LIFE MADE BY KUNAL JANGID
+
