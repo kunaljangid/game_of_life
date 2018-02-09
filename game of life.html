@@ -1,0 +1,294 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>game of life</title>
+    <h1 style="text-align: center; font-size: 250%; line-height:200%; font-style: bold">
+        <span style="color: #000DFF;"><u>CONWAY'S-GAME OF LIFE</u></span></h1>
+	<style>
+		#my-canvas {
+			display: block;
+			margin: 0 auto;
+			border: 4px solid #000DFF;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="my-canvas"></canvas>
+    <script>
+(function () {
+	var lastTime = 0;
+	var vendors = [ 'moz', 'webkit'];
+    //for animation and permission from browser
+		window.requestAnimationFrame = window[vendors[0] + 'RequestAnimationFrame'];
+		window.cancelAnimationFrame = window[vendors[0] + 'CancelAnimationFrame'] || window[vendors[0] + 'CancelRequestAnimationFrame'];
+    
+	if (!window.requestAnimationFrame) window.requestAnimationFrame = function (callback, element) {
+		var currTime = new Date().getTime();
+		var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+		var id = window.setTimeout(function () {
+			callback(currTime + timeToCall);
+		}, timeToCall);
+		lastTime = currTime + timeToCall;
+		return id;
+	};
+}());
+
+
+// Namespace
+var GameOfLife = window.GameOfLife || {};
+
+//to change the Settings
+GameOfLife.settings = {
+	UPDATE_RATE: 10,
+	FPS: 10,
+	cellSize: 15,
+	cellsX: 40,
+	cellsY: 40
+};
+// cell functioning
+(function () {
+
+	function Cell(x, y) {
+		this.x = x;
+		this.y = y;
+		this.isAlive = false;
+        //to randomise the initial cells
+		this.nextState = Math.random() > .5 ? true : false;
+	}
+
+	Cell.prototype.switchState = function () {
+		this.isAlive = this.nextState;
+	};
+
+	Cell.prototype.draw = function (context) {
+		if (this.isAlive) {
+			context.save();
+			context.fillStyle = '#54FF00';
+			context.fillRect(this.x, this.y, GameOfLife.settings.cellSize, GameOfLife.settings.cellSize);
+			context.restore();
+		}
+	};
+
+	GameOfLife.Cell = Cell;
+
+}());
+
+/**
+ * Grid
+ */
+(function () {
+
+	function Grid() {
+		var cellsX = GameOfLife.settings.cellsX;
+		var cellsY = GameOfLife.settings.cellsY;
+
+		// Create Two dimensional Array
+		this.cells = new Array(cellsX);
+		for (var i = 0; i < cellsX; i++) {
+			this.cells[i] = new Array(cellsY);
+		}
+
+		// Fill Array with new Cells
+		for (var x = 0; x < cellsX; x++) {
+			for (var y = 0; y < cellsY; y++) {
+				this.cells[x][y] = new GameOfLife.Cell(x * GameOfLife.settings.cellSize, y * GameOfLife.settings.cellSize);
+			}
+		}
+		this.setNextState();
+
+	}
+
+	Grid.prototype.update = function () {
+		// Loop through every cell on the grid
+		for (var x = 0; x < GameOfLife.settings.cellsX; x++) {
+			for (var y = 0; y < GameOfLife.settings.cellsY; y++) {
+				var living = this.cells[x][y].isAlive;
+				var count = this.getLivingNeighbors(x, y);
+				var result = false;
+
+				// Apply the rules and set the next state.
+				if (living && count < 2) {
+					result = false;
+				}
+				if (living && (count == 2 || count == 3)) {
+					result = true;
+				}
+				if (living && count > 3) {
+					result = false;
+				}
+				if (!living && count == 3) {
+					result = true;
+				}
+
+				this.cells[x][y].nextState = result;
+			}
+		}
+
+		this.setNextState();
+	};
+
+	Grid.prototype.getLivingNeighbors = function (x, y) {
+		var count = 0;
+		var cellsX = GameOfLife.settings.cellsX;
+		var cellsY = GameOfLife.settings.cellsY;
+
+		// check right cell
+		if (x != cellsX - 1) {
+			if (this.cells[x + 1][y].isAlive) {
+				count++;
+			}
+		}
+		// check bottom right cell
+		if (x != cellsX - 1 && y != cellsY - 1) {
+			if (this.cells[x + 1][y + 1].isAlive) {
+				count++;
+			}
+		}
+	// check bottom cell
+		if (y != cellsY - 1) {
+			if (this.cells[x][y + 1].isAlive) {
+				count++;
+			}
+		}
+	// check bottom left cell
+		if (x !== 0 && y != cellsY - 1) {
+			if (this.cells[x - 1][y + 1].isAlive) {
+				count++;
+			}
+		}
+    // check left cell
+		if (x !== 0) {
+			if (this.cells[x - 1][y].isAlive) {
+				count++;
+			}
+		}
+	// check top left cell
+		if (x !== 0 && y !== 0) {
+			if (this.cells[x - 1][y - 1].isAlive) {
+				count++;
+			}
+		}
+    // check top cell
+		if (y !== 0) {
+			if (this.cells[x][y - 1].isAlive) {
+				count++;
+			}
+		}
+	// check top right cell
+		if (x != cellsX - 1 && y !== 0) {
+			if (this.cells[x + 1][y - 1].isAlive) {
+				count++;
+			}
+		}
+
+		return count;
+	};
+
+	Grid.prototype.draw = function (context) {
+		// Draw the cells
+		for (var x = 0; x < GameOfLife.settings.cellsX; x++) {
+			for (var y = 0; y < GameOfLife.settings.cellsY; y++) {
+				this.cells[x][y].draw(context);
+			}
+		}
+
+		// Draw the grid
+		context.save();
+		context.strokeStyle = '#009AFF';
+		context.lineWidth = 1;
+		// Horizontal grid lines
+		// Skip the first line
+		for (var i = 0; i < GameOfLife.settings.cellsY - 1; i++) {
+			// Add 0.5 to y position to make lines
+			var posY = (i * GameOfLife.settings.cellSize) + .5 + GameOfLife.settings.cellSize;
+			context.beginPath();
+			context.moveTo(0, posY);
+			context.lineTo(GameOfLife.settings.cellsX * GameOfLife.settings.cellSize, posY);
+			context.stroke();
+		}
+		// Vertical grid lines
+		// Skip the first line
+		for (var j = 0; j < GameOfLife.settings.cellsX - 1; j++) {
+			// Add 0.5 to y position to maintain crisp lines
+			var posX = (j * GameOfLife.settings.cellSize) + 0.5 + GameOfLife.settings.cellSize;
+			context.beginPath();
+			context.moveTo(posX, 0);
+			context.lineTo(posX, GameOfLife.settings.cellsY * GameOfLife.settings.cellSize);
+			context.stroke();
+		}
+		context.restore();
+	};
+    
+    Grid.prototype.setNextState = function () {
+		for (var x = 0; x < GameOfLife.settings.cellsX; x++) {
+			for (var y = 0; y < GameOfLife.settings.cellsY; y++) {
+				this.cells[x][y].switchState();
+			}
+		}
+	};
+
+	GameOfLife.Grid = Grid;
+
+}());
+(function () {
+
+	function Game() {
+		this.canvas = null;
+		this.context = null;
+	}
+
+	Game.prototype.init = function () {
+		this.canvas = document.getElementById('my-canvas');
+			this.context = this.canvas.getContext('2d');
+
+			// Set canvas size
+			this.canvas.width = GameOfLife.settings.cellsX * GameOfLife.settings.cellSize;
+			this.canvas.height = GameOfLife.settings.cellsY * GameOfLife.settings.cellSize;
+
+			// Create Grid
+			this.grid = new GameOfLife.Grid();
+
+			// Update interval
+			setInterval(this.update.bind(this), 2000 / GameOfLife.settings.UPDATE_RATE);
+			// Animation loop, bind scope
+			requestAnimationFrame(this.animLoop.bind(this));
+
+			this.addListeners();
+	};
+        Game.prototype.update = function () {
+		// Only update when game isn't paused
+		
+			this.grid.update();
+		
+	};
+
+	Game.prototype.animLoop = function () {
+		var self = this;
+		setTimeout(function () {
+			requestAnimationFrame(self.animLoop.bind(self));
+			// Call render method
+			self.render();
+		}, 1000 / GameOfLife.settings.FPS);
+	};
+
+	Game.prototype.render = function() {
+		// Start with a blank canvas every render cycle
+		this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Draw the grid
+		this.grid.draw(this.context);
+	};
+
+	GameOfLife.Game = Game;
+
+}());
+
+(function () {
+	// Create an instance of the game
+	var game = new GameOfLife.Game();
+	game.init();
+
+}());
+</script>
+</body>
+</html>
